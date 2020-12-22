@@ -1,0 +1,83 @@
+include "/etc/bind/zones.rfc1918";
+logging {
+        channel "named" {
+// This is chrooted, so look for /var/lib/named-chroot/var/log/named.log !
+                file "/var/log/named.log" versions 7 size 20m;
+                severity info;
+                print-time yes;
+                print-severity yes;
+                print-category yes;
+        };
+
+        category "default" { "named"; };
+        category "general" { "named"; };
+        category "database" { "named"; };
+        category "security" { "named"; };
+        category "config" { "named"; };
+        category "resolver" { "named"; };
+        category "xfer-in" { "named"; };
+        category "xfer-out" { "named"; };
+        category "notify" { "named"; };
+        category "client" { "named"; };
+        category "network" { "named"; };
+        category "update" { "named"; };
+        category "queries" { "null"; };
+        category "dispatch" { "named"; };
+        category "dnssec" { "named"; };
+        category "lame-servers" { "null"; };
+};
+
+{% for item in bind_copies | default({}) | dict2items %}
+{% if item.value | default({}) != {} %}
+acl "{{ item.key }}" {
+{% for server in item.value | dict2items %}
+  // {{ server.key }}
+{% for ip in server.value %}
+  {{ ip }};
+{% endfor %}
+{% endfor %}
+};
+{% endif %}
+{% endfor %}
+
+{% for db in dns_suffixes | default({}) | dict2items %}
+// Suffix: {{ db.key }}
+
+{% for item in db.value.names | default([]) %}
+zone "{{ item }}" {
+  type master;
+  file "/etc/bind/db.{{ db.key }}";
+  allow-transfer {
+{% for bind_copy in db.value.bind_copies | default(bind_copies | default({})) | dict2items %}
+{% if bind_copy | default({}) != {} %}
+    "{{ bind_copy.key }}";
+{% endif %}
+{% endfor %}
+  };
+  allow-update { none; };
+};
+
+{% endfor %}{% endfor %}
+// Reverse IPv6 DNS
+{% for item in hosts | default({}) | dict2items %}
+{% if item.value.v6 is defined %}
+{% set ns = namespace(ipv6_blocks = '') %}
+{% set ipv6_blocks = (item.value.v6 | ipaddr('network')).split(':') %}
+{% for ipv6_block in ipv6_blocks %}
+{% set ipv6_block = ipv6_block | string %}
+{% if ipv6_block | length == 3 %}
+{% set ns.ipv6_blocks = ns.ipv6_blocks | default('') + '0' %}
+{% elif ipv6_block | length == 2 %}
+{% set ns.ipv6_blocks = ns.ipv6_blocks | default('') + '00' %}
+{% elif ipv6_block | length == 1 %}
+{% set ns.ipv6_blocks = ns.ipv6_blocks | default('') + '000' %}
+{% endif %}
+{% set ns.ipv6_blocks = ns.ipv6_blocks | default('') + ipv6_block %}
+{% endfor %}
+
+zone "{{ ns.ipv6_blocks | reverse | list | join('.') }}.ip6.arpa" {
+  type master;
+  file "/etc/bind/reverse/db.{{ item.key }}-ipv6";
+  allow-update { none; };
+};
+{% endif %}{% endfor %}

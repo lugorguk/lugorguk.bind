@@ -1,0 +1,43 @@
+{% set this_mx = this.mail_hosting | default(this.mail_redirects | default('')) %}
+{% if this.dns_name is defined and this.dns_name != "" %}
+{% set member_ns = namespace() %}
+{% set member_ns.mx = 10 %}
+{% set member_ns.www_defined = 'not_needed' %}
+
+; #############################################
+; GROUP RECORD FOR {{ this.dns_name }}
+; Contact: {{ this.contact | default('none') }} <{{ this.contact_address | default('none@none') }}>
+{% if this.notes is defined %}
+; Notes: {{ this.notes }}
+{% endif %}
+; #############################################
+
+{% if this.web_hosting is defined and this.web_hosting is string %}
+{% set member_ns.www_defined = 'needed' %}
+{{ this.dns_name }} IN CNAME {{ this.web_hosting }}{% if this.web_hosting in ['snm', 'web-01'] %}.lug.org.uk.{% endif %}
+{% elif this.web_hosting is defined and this.web_hosting.via is defined and this.web_hosting.via is string %}
+{% set member_ns.www_defined = 'needed' %}
+{{ this.dns_name }} IN CNAME {{ this.web_hosting.via }}{% if this.web_hosting.via in ['snm', 'web-01'] %}.lug.org.uk.{% endif %} ; redirecting {% if this.web_hosting.to is defined %} to {{ this.web_hosting.to }}{% endif %}
+
+{% endif %}{# if this.web_hosting is defined #}
+{% if this_mx is defined and this_mx is string and this_mx != '' %}
+{{ this.dns_name }} IN MX 10 {{ this_mx }}.
+{% elif this_mx is defined and this_mx != '' and this_mx is not mapping and this_mx is not number %}
+{% for mx in this_mx %}
+{{ this.dns_name }} IN MX {{ member_ns.mx }} {{ mx }}.
+{% set member_ns.mx = member_ns.mx + 10 %}
+{% endfor %}
+{% endif %}{# if mx is defined #}
+{% if this.extra_dns_records is defined %}
+{% for record in this.extra_dns_records %}
+{% if record.target | default(this.dns_name) == 'www' and (record.type | default('TXT') in ['A', 'AAAA', 'CNAME']) %}
+{% set member_ns.www_defined = 'true' %}
+{% endif %}{# record.target == 'www' and record.type in ['A', 'AAAA', 'CNAME'] #}
+{{ record.target | default(this.dns_name) }} IN {{ record.type | default('TXT') }} {{ record.record | default(this.dns_name) }}
+{% endfor %}{# record in this.extra_dns_records #}
+{% endif %}{# if this.extra_dns_records is defined #}
+{% if member_ns.www_defined == 'needed' %}
+
+www.{{ this.dns_name }} IN CNAME {{ this.dns_name }}
+{% endif %}{# member_ns.www_defined == 'needed' #}
+{% endif %}{# if this.dns_name is defined #}

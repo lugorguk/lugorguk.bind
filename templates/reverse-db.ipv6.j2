@@ -1,0 +1,37 @@
+;
+; {{ item.value.v6 | ipaddr('network') }}/{{ item.value.v6 | ipaddr('prefix') }}
+;
+{% set ns = namespace(ipv6_blocks = '') %}
+{% set ipv6_blocks = (item.value.v6 | ipaddr('network')).split(':') %}
+{% for ipv6_block in ipv6_blocks %}
+{% set ipv6_block = ipv6_block | string %}
+{% if ipv6_block | length == 3 %}
+{% set ns.v6_blocks = ns.v6_blocks | default('') + '0' %}
+{% elif ipv6_block | length == 2 %}
+{% set ns.v6_blocks = ns.v6_blocks | default('') + '00' %}
+{% elif ipv6_block | length == 1 %}
+{% set ns.v6_blocks = ns.v6_blocks | default('') + '000' %}
+{% endif %}
+{% set ns.v6_blocks = ns.v6_blocks | default('') + ipv6_block %}
+{% endfor %}
+$ORIGIN {{ ns.v6_blocks | reverse | list | join('.') }}.ip6.arpa.
+$TTL 1h; Default TTL
+
+@  IN  SOA  ns1.lug.org.uk.  admin.lug.org.uk. (
+  {{ ansible_date_time.year }}{{ ansible_date_time.month }}{{ ansible_date_time.day }}{{ ansible_date_time.hour }} ; serial
+  1h;         slave refresh interval
+  15m;        slave retry interval
+  1w;         slave copy expire time
+  1h;         NXDOMAIN cache time
+)
+
+;
+; domain name servers
+;
+
+@ IN  NS  ns1.lug.org.uk.
+
+@ TXT "{{ item.value.v6 | ipaddr('network') }}/{{ item.value.v6 | ipaddr('prefix') }} Reverse DNS"
+
+2.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0 PTR {{ item.key }}.lug.org.uk.
+

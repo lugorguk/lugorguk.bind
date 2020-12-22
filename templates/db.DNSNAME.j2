@@ -1,0 +1,150 @@
+{% set ns_loop = namespace() -%}
+$TTL 86400
+@ IN SOA  ns1.lug.org.uk. hostmaster.lug.org.uk. (
+  {{ ansible_date_time.year }}{{ ansible_date_time.month }}{{ ansible_date_time.day }}{{ ansible_date_time.hour }} ; Serial
+  3600   ; Refresh after 1 hour
+  600    ; Retry every 10 minutes
+  604800 ; Expire after 1 week
+  3600   ; Cache failed lookups 1 hour
+)
+{% for this in my.services | dict2items %}
+
+; -----------------------------------
+; - Service: {{ this.key }}
+; -----------------------------------
+
+{% if this.value.cname is defined %}
+{{ this.key }} IN CNAME {{ this.value.cname }}
+{% else %}
+{% if this.value.hosts is defined %}
+{% for host in this.value.hosts | default([]) %}
+{% if host.v4 is defined %}
+{{ this.key }} IN A    {{ host.v4 | ipaddr('address') }}
+{% endif %}{# host.v4 is defined #}
+{% if host.v6 is defined %}
+{{ this.key }} IN AAAA {{ host.v6 | ipaddr('address') }}
+{% endif %}{# host.v6 is defined #}
+{% endfor %}{# host in this.value.hosts #}
+{% endif %}{# this.value.hosts is defined #}
+{% if this.value.ns is defined and
+      this.value.ns is string
+%}
+{{ this.key }} IN NS   {{ this.value.ns }}
+{% elif this.value.ns is defined and
+        (
+          this.value.ns is not mapping and
+          this.value.ns is iterable
+        )
+%}
+{% for ns in this.value.ns %}
+{{ this.key }} IN NS   {{ ns }}
+{% endfor %}{# ns in this.value.ns #}
+{% endif %}{# this.value.ns is string or list #}
+{% if this.value.rp is defined %}
+{{ this.key }} IN RP   {{ this.value.rp }}
+{% endif %}{# this.value.rp is defined #}
+{% if this.value.mx is defined and 
+      this.value.mx is string
+%}
+{{ this.key }} IN MX   10 {{ this.value.mx }}.
+{% elif this.value.mx is defined and
+        this.value.mx is not mapping and
+        this.value.mx is sequence
+%}
+{% set ns_loop.mx = 10 %}
+{% for mx in this.value.mx %}
+{{ this.key }} IN MX   {{ ns_loop.mx }} {{ mx }}.
+{% set ns_loop.mx = ns_loop.mx + 10 %}
+{% endfor %}{# mx in this.value.mx #}
+{% endif %}{# this.value.mx is string or list #}
+{% if this.value.txt is defined and
+      this.value.txt is string
+%}
+{{ this.key }} IN TXT  "{{ this.value.txt }}"
+{% elif this.value.txt is defined and
+        this.value.txt is not mapping and
+        this.value.txt is sequence
+%}
+{% for txt in this.value.txt %}
+{{ this.key }} IN TXT  "{{ txt }}"
+{% endfor %}{# txt in this.value.txt #}
+{% endif %}{# this.value.txt is string or list #}
+{% if this.value.spf is defined and
+      this.value.spf is string
+%}
+{{ this.key }} IN TXT  "{{ this.value.spf }}"
+{{ this.key }} IN SPF  "{{ this.value.spf }}"
+{% elif this.value.spf is defined and
+        this.value.spf is not mapping and
+        this.value.spf is sequence
+%}
+{% for spf in this.value.spf %}
+{{ this.key }} IN TXT  "{{ spf }}"
+{{ this.key }} IN SPF  "{{ spf }}"
+{% endfor %}{# spf in this.value.spf #}
+{% endif %}{# if spf is defined #}
+{% endif %}{# this has a CNAME property, or doesn't #}
+{% if this.value.aliases is defined %}
+{% for alias in this.value.aliases | default([]) %}
+{{ alias }} IN CNAME {{ this.key }}
+{% endfor %}{# for alias in aliases #}
+{% endif %}{# if aliases is defined #}
+{% endfor %}{# for this in services #}
+{% if my.hosts is defined %}
+{% for this in my.hosts | default({}) | dict2items %}
+
+; ###################################
+; # Host: {{ this.key }}
+; ###################################
+
+{% if this.value.v4 is defined %}
+{{ this.key }} IN A    {{ this.value.v4 | ipaddr('address') }}
+{% endif %}
+{% if this.value.v6 is defined %}
+{{ this.key }} IN AAAA {{ this.value.v6 | ipaddr('address') }}
+{% endif %}
+{% if this.value.mx | default(default_mx | default ([])) is string %}
+{{ this.key }} IN MX   10 {{ this.value.mx | default(default_mx | default ([])) }}.
+{% elif this.value.mx | default(default_mx | default ([])) is not mapping and
+        this.value.mx | default(default_mx | default ([])) is sequence
+%}
+{% set ns_loop.mx = 10 %}
+{% for mx in this.value.mx | default(default_mx | default ([])) %}
+{{ this.key }} IN MX   {{ ns_loop.mx }} {{ mx }}.
+{% set ns_loop.mx = ns_loop.mx + 10 %}
+{% endfor %}
+{% endif %}{# if mx is defined #}
+{% if this.value.rp | default(default_rp | default ('')) != '' %}
+{{ this.key }} IN RP   {{ this.value.rp | default(default_rp | default ('')) }}
+{% endif %}{# rp is defined #}
+{% if this.value.txt | default(default_txt | default ([])) is string %}
+{{ this.key }} IN TXT  "{{ this.value.txt | default(default_txt) }}"
+{% elif this.value.txt | default(default_txt | default ([])) is not mapping and
+        this.value.txt | default(default_txt | default ([])) is sequence
+%}
+{% for txt in this.value.txt | default(default_txt | default ([])) %}
+{{ this.key }} IN TXT  "{{ txt }}"
+{% endfor %}{# for txt #}
+{% endif %}{# if txt is defined #}
+{% if this.value.spf | default(default_spf | default ('')) != '' %}
+{{ this.key }} IN TXT  "{{ this.value.spf | default(default_spf | default ('')) }}"
+{{ this.key }} IN SPF  "{{ this.value.spf | default(default_spf | default ('')) }}"
+{% endif %}{# if spf is defined #}
+{% if this.value.aliases is defined %}
+
+{% for alias in this.value.aliases | default([]) %}
+{{ alias }} IN CNAME {{ this.key }}
+{% endfor %}{# for alias in aliases #}
+{% endif %}{# if aliases is defined #}
+{% endfor %}{# for this in hosts #}
+{% endif %}{# if my.hosts is defined #}
+{% if my.lugs is defined %}
+
+; =====================================================
+;  H O S T E D - G R O U P S - @ - L U G - O R G - U K
+; =====================================================
+{% for item in my.hosted_services | default({}) | dict2items %}
+{% set this = item.value %}
+{% include 'db.MEMBER.j2' %}
+{% endfor %}{# item in active_groups #}
+{% endif %}{# if my.lugs is defined #}
