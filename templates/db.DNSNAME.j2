@@ -138,7 +138,7 @@ $TTL 86400
 {% endif %}{# if aliases is defined #}
 {% endfor %}{# for this in hosts #}
 {% endif %}{# if my.hosts is defined #}
-{% if my.lugs is defined %}
+{% if my.hosted_services is defined %}
 
 ; =====================================================
 ;  H O S T E D - G R O U P S - @ - L U G - O R G - U K
@@ -146,5 +146,5 @@ $TTL 86400
 {% for item in my.hosted_services | default({}) | dict2items %}
 {% set this = item.value %}
 {% include 'db.MEMBER.j2' %}
-{% endfor %}{# item in active_groups #}
-{% endif %}{# if my.lugs is defined #}
+{% endfor %}{# item in hosted_services #}
+{% endif %}{# if my.hosted_services is defined #}
