@@ -1,16 +1,23 @@
 ---
-- name: Install Bind9
+- name: Install Bind9 and Dig
   apt:
-    name: bind9
+    name:
+    - bind9
+    - dnsutils
     state: present
 
-- name: Install named.conf.local into /etc/bind
+- name: Install named.conf files into /etc/bind
   template:
-    src: named.conf.local.j2
-    dest: /etc/bind/named.conf.local
+    src: "named.conf.{{ item }}.j2"
+    dest: "/etc/bind/named.conf.{{ item }}"
   notify: Reload Bind.
+  loop:
+  - local
+  - options
+  loop_control:
+    label: "named.conf.{{ item }}"
 
-# TODO: Got to here to validate comparison with lug.org.uk
+# FIXME: `/usr/sbin/named-checkconf -z "/etc/bind/named.conf"` fails with lots of issues!
 - name: Create zone files ready to inject into /etc/bind
   changed_when: false
   template:
@@ -21,12 +28,11 @@
   loop:
   - lug.org.uk
   - ogg.camp
-  notify: Reload Bind.
 
 - name: Verify then replace changed zone files
   # This extra step is required because the template creates a "serial" which is actually just the date and time.
   # This script diffs the two files without the serial line, and if there are differences, it copies the "temporary" version over the "target".
-  shell: "bash /etc/ansible/install/roles/lugorguk.bind/files/validate-bind-db.sh /etc/bind/tmp_db.{{ item }} /etc/bind/db.{{ item }}"
+  shell: "bash -x /etc/ansible/install/roles/lugorguk.bind/files/validate-bind-db.sh /etc/bind/tmp_db.{{ item }} /etc/bind/db.{{ item }} CHECK_BINDCONF"
   register: output
   changed_when: output.rc == 1
   failed_when: output.rc == 2
@@ -53,7 +59,7 @@
     label: "{{ item.key }}"
 
 - name: Verify then replace changed zone files
-  shell: "bash /etc/ansible/install/roles/lugorguk.bind/files/validate-bind-db.sh /etc/bind/reverse/tmp_db.{{ item.key }}-ipv6 /etc/bind/reverse/db.{{ item.key }}-ipv6"
+  shell: "bash -x /etc/ansible/install/roles/lugorguk.bind/files/validate-bind-db.sh /etc/bind/reverse/tmp_db.{{ item.key }}-ipv6 /etc/bind/reverse/db.{{ item.key }}-ipv6 CHECK_BINDCONF"
   register: output
   changed_when: output.rc == 1
   failed_when: output.rc == 2
