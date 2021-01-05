@@ -1,0 +1,42 @@
+options {
+	directory "/var/cache/bind";
+
+	// If there is a firewall between you and nameservers you want
+	// to talk to, you may need to fix the firewall to allow multiple
+	// ports to talk.  See http://www.kb.cert.org/vuls/id/800113
+
+{% if bind_forwarders | default({}) != {} %}
+	forwarders {
+{% for item in bind_forwarders | dict2items %}
+{% if item.value | default([]) != [] %}
+		// {{ item.key }}
+{% for server in item.value %}
+		{{ server }};
+{% endfor %}{# server in item.value #}
+{% endif %}{# item.value != [] #}
+{% endfor %}{# item in bind_forwarders #}
+	};
+{% endif %}{# bind_forwarders != {} #}
+
+	//========================================================================
+	// If BIND logs error messages about the root key being expired,
+	// you will need to update your keys.  See https://www.isc.org/bind-keys
+	//========================================================================
+
+	dnssec-validation auto;
+
+	listen-on-v6 { any; };
+
+	// This (from this onwards) is from admin.lug.org.uk config as of 2021-01-04
+	// No commentary on the validity of any of these lines is implied ;)
+	auth-nxdomain no;    # conform to RFC1035
+	dnssec-enable yes;
+
+	// Allow query by anyone
+	allow-query { any; };
+
+	// ..but we are an auth-only nameserver so no recursion
+	recursion no;
+
+	notify yes;
+};
