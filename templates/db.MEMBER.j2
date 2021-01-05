@@ -17,7 +17,7 @@
 {{ this.dns_name }} IN CNAME {{ this.web_hosting }}{% if this.web_hosting in ['snm', 'web-01'] %}.lug.org.uk.{% endif %}
 {% elif this.web_hosting is defined and this.web_hosting.via is defined and this.web_hosting.via is string %}
 {% set member_ns.www_defined = 'needed' %}
-{{ this.dns_name }} IN CNAME {{ this.web_hosting.via }}{% if this.web_hosting.via in ['snm', 'web-01'] %}.lug.org.uk.{% endif %} ; redirecting {% if this.web_hosting.to is defined %} to {{ this.web_hosting.to }}{% endif %}
+{{ this.dns_name }} IN CNAME {{ this.web_hosting.via }}{% if this.web_hosting.via in ['snm', 'web-01'] %}.lug.org.uk.{% endif %} ; redirecting {% if this.web_hosting.to is defined %}to {{ this.web_hosting.to }}{% endif %}
 
 {% endif %}{# if this.web_hosting is defined #}
 {% if this_mx is defined and this_mx is string and this_mx != '' %}
