@@ -1,7 +1,12 @@
 {% set ns_loop = namespace() -%}
 $TTL 86400
-@ IN SOA  ns1.lug.org.uk. hostmaster.lug.org.uk. (
-  {{ ansible_date_time.year }}{{ ansible_date_time.month }}{{ ansible_date_time.day }}{{ ansible_date_time.hour }} ; Serial
+;/-------------------------- This refers to the root record name
+;|/------------------------- This means this is an Internet DNS record
+;||   /--------------------- This means "Start of Authority
+;||  |     /---------------- This is the "primary" DNS server which hosts changes (i.e., this one!)
+;||  |    |               /- This is the "RName" - Responsible name for this SOA record - i.e. admin@lug.org.uk
+@ IN SOA  ns1.lug.org.uk. admin.lug.org.uk. (
+  {{ ansible_date_time.year }}{{ ansible_date_time.month }}{{ ansible_date_time.day }}{{ ansible_date_time.hour }} ; Serial in YYYYMMDDHH
   3600   ; Refresh after 1 hour
   600    ; Retry every 10 minutes
   604800 ; Expire after 1 week
