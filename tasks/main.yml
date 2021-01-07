@@ -6,10 +6,34 @@
     - dnsutils
     state: present
 
+- name: Config apparmor to permit bind logging
+  lineinfile:
+    path: /etc/apparmor.d/local/usr.sbin.named
+    line: "  /var/log/named.log rw,"
+  notify: Reload AppArmor.
+
+- name: Check bind log state
+  stat:
+    path: /var/log/named.log
+  register: stat
+
+- name: Create bind log file
+  when: not stat.stat.exists
+  file:
+    path: /var/log/named.log
+    state: touch
+    owner: bind
+    group: root
+    mode: "0640"
+  notify: Reload Bind.
+
 - name: Install named.conf files into /etc/bind
   template:
     src: "named.conf.{{ item }}.j2"
     dest: "/etc/bind/named.conf.{{ item }}"
+    owner: root
+    group: bind
+    mode: "0644"
   notify: Reload Bind.
   loop:
   - local
@@ -23,6 +47,9 @@
   template:
     src: db.DNSNAME.j2
     dest: "/etc/bind/tmp_db.{{ item }}"
+    owner: root
+    group: bind
+    mode: "0644"
   vars:
     my: "{{ dns[item] }}"
   loop:
@@ -53,6 +80,9 @@
   template:
     src: reverse-db.ipv6.j2
     dest: "/etc/bind/reverse/tmp_db.{{ item.key }}-ipv6"
+    owner: root
+    group: bind
+    mode: "0644"
   changed_when: false
   loop: "{{ hosts | default({}) | dict2items }}"
   loop_control:

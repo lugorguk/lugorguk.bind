@@ -1,4 +1,9 @@
 ---
+- name: Reload AppArmor.
+  systemd:
+    name: apparmor.service
+    state: reloaded
+
 - name: Reload Bind.
   systemd:
     name: bind9
