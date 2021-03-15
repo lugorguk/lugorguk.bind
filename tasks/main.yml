@@ -4,28 +4,30 @@
     name:
     - bind9
     - dnsutils
+    # Due to issues with apparmor not liking /var/log/named.log
+    - apparmor-utils
     state: present
 
+# Due to issues with apparmor not liking /var/log/named.log
+# @TODO: Still broken!
 - name: Config apparmor to permit bind logging
-  lineinfile:
-    path: /etc/apparmor.d/local/usr.sbin.named
-    line: "  /var/log/named.log rw,"
+  shell: aa-disable usr.sbin.named
   notify: Reload AppArmor.
 
-- name: Check bind log state
-  stat:
-    path: /var/log/named.log
-  register: stat
+# - name: Check bind log state
+#   stat:
+#     path: /var/log/named.log
+#   register: stat
 
-- name: Create bind log file
-  when: not stat.stat.exists
-  file:
-    path: /var/log/named.log
-    state: touch
-    owner: bind
-    group: root
-    mode: "0640"
-  notify: Reload Bind.
+# - name: Create bind log file
+#   when: not stat.stat.exists
+#   file:
+#     path: /var/log/named.log
+#     state: touch
+#     owner: bind
+#     group: root
+#     mode: "0640"
+#   notify: Reload Bind.
 
 - name: Install named.conf files into /etc/bind
   template:
