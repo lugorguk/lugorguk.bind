@@ -8,26 +8,32 @@
     - apparmor-utils
     state: present
 
-# Due to issues with apparmor not liking /var/log/named.log
-# @TODO: Still broken!
+# @TODO AppArmor doesn't like the fact that we use /var/log/named.log.
+# We really need to amend AppArmor to add create/modify rights on
+# /var/log/named.log (which we don't do in this, but have in live.)
 - name: Config apparmor to permit bind logging
   shell: aa-disable usr.sbin.named
+  args:
+    creates: /etc/apparmor.d/disable/usr.sbin.named
   notify: Reload AppArmor.
 
-# - name: Check bind log state
-#   stat:
-#     path: /var/log/named.log
-#   register: stat
+- name: Flush handlers
+  meta: flush_handlers
 
-# - name: Create bind log file
-#   when: not stat.stat.exists
-#   file:
-#     path: /var/log/named.log
-#     state: touch
-#     owner: bind
-#     group: root
-#     mode: "0640"
-#   notify: Reload Bind.
+- name: Check bind log state
+  stat:
+    path: /var/log/named.log
+  register: stat
+
+- name: Create bind log file
+  when: not stat.stat.exists
+  file:
+    path: /var/log/named.log
+    state: touch
+    owner: bind
+    group: root
+    mode: "0640"
+  notify: Reload Bind.
 
 - name: Install named.conf files into /etc/bind
   template:
