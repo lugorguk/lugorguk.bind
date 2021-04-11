@@ -12,7 +12,7 @@
 # We really need to amend AppArmor to add create/modify rights on
 # /var/log/named.log (which we don't do in this, but have in live.)
 - name: Config apparmor to permit bind logging
-  shell: aa-disable usr.sbin.named
+  shell: aa-disable usr.sbin.named || true
   args:
     creates: /etc/apparmor.d/disable/usr.sbin.named
   notify: Reload AppArmor.
@@ -67,7 +67,7 @@
 - name: Verify then replace changed zone files
   # This extra step is required because the template creates a "serial" which is actually just the date and time.
   # This script diffs the two files without the serial line, and if there are differences, it copies the "temporary" version over the "target".
-  shell: "bash -x /etc/ansible/install/roles/lugorguk.bind/files/validate-bind-db.sh /etc/bind/tmp_db.{{ item }} /etc/bind/db.{{ item }} CHECK_BINDCONF"
+  shell: "bash -x /{{ playbook_dir }}/roles/lugorguk.bind/files/validate-bind-db.sh /etc/bind/tmp_db.{{ item }} /etc/bind/db.{{ item }} CHECK_BINDCONF"
   register: output
   changed_when: output.rc == 1
   failed_when: output.rc == 2
@@ -97,7 +97,7 @@
     label: "{{ item.key }}"
 
 - name: Verify then replace changed zone files
-  shell: "bash -x /etc/ansible/install/roles/lugorguk.bind/files/validate-bind-db.sh /etc/bind/reverse/tmp_db.{{ item.key }}-ipv6 /etc/bind/reverse/db.{{ item.key }}-ipv6 CHECK_BINDCONF"
+  shell: "bash -x /{{ playbook_dir }}/roles/lugorguk.bind/files/validate-bind-db.sh /etc/bind/reverse/tmp_db.{{ item.key }}-ipv6 /etc/bind/reverse/db.{{ item.key }}-ipv6 CHECK_BINDCONF"
   register: output
   changed_when: output.rc == 1
   failed_when: output.rc == 2
