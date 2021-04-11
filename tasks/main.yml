@@ -4,13 +4,21 @@
     name:
     - bind9
     - dnsutils
+    # Due to issues with apparmor not liking /var/log/named.log
+    - apparmor-utils
     state: present
 
+# @TODO AppArmor doesn't like the fact that we use /var/log/named.log.
+# We really need to amend AppArmor to add create/modify rights on
+# /var/log/named.log (which we don't do in this, but have in live.)
 - name: Config apparmor to permit bind logging
-  lineinfile:
-    path: /etc/apparmor.d/local/usr.sbin.named
-    line: "  /var/log/named.log rw,"
+  shell: aa-disable usr.sbin.named
+  args:
+    creates: /etc/apparmor.d/disable/usr.sbin.named
   notify: Reload AppArmor.
+
+- name: Flush handlers
+  meta: flush_handlers
 
 - name: Check bind log state
   stat:
